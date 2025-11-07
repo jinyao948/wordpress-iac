@@ -1,9 +1,10 @@
-// security grps for alb, wp instances, and RDS.
+// Security groups for ALB, WordPress EC2 instances, and RDS.
 
 resource "aws_security_group" "alb" {
-  name        = "${var.project}-${var.env}-alb-sg"
-  description = "http ingeress from the internet to ALB"
-  vpc_id      = aws_vpc.this.id
+  name                   = "${var.project}-${var.env}-alb-sg"
+  description            = "Allow HTTP ingress from the internet to the ALB"
+  vpc_id                 = aws_vpc.this.id
+  revoke_rules_on_delete = true
 
   ingress {
     description = "HTTP from anywhere"
@@ -37,9 +38,10 @@ resource "aws_security_group" "alb" {
 }
 
 resource "aws_security_group" "ec2" {
-  name        = "${var.project}-${var.env}-ec2-sg"
-  description = "Allow traffic from ALB to ec2 instance"
-  vpc_id      = aws_vpc.this.id
+  name                   = "${var.project}-${var.env}-ec2-sg"
+  description            = "Allow traffic from the ALB to WordPress EC2 instances"
+  vpc_id                 = aws_vpc.this.id
+  revoke_rules_on_delete = true
 
   ingress {
     description     = "HTTP from ALB"
@@ -65,12 +67,13 @@ resource "aws_security_group" "ec2" {
 }
 
 resource "aws_security_group" "rds" {
-  name        = "${var.project}-${var.env}-rds-sg"
-  description = "Allow MySQL from WordPress tasks"
-  vpc_id      = aws_vpc.this.id
+  name                   = "${var.project}-${var.env}-rds-sg"
+  description            = "Allow MySQL from WordPress EC2 instances"
+  vpc_id                 = aws_vpc.this.id
+  revoke_rules_on_delete = true
 
   ingress {
-    description     = "MySQL from WordPress tasks ingresses"
+    description     = "MySQL from WordPress EC2 instances"
     from_port       = 3306
     to_port         = 3306
     protocol        = "tcp"

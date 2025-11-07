@@ -20,6 +20,7 @@ module "compute" {
   ssm_param_prefix          = "/${local.project}/${local.env}"
   region                    = local.region
   instance_type             = "t2.micro"
+  wordpress_image           = "${module.ecr.repository_url}:latest"
   db_endpoint               = module.rds_mysql.db_endpoint
 }
 

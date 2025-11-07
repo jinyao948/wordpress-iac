@@ -1,11 +1,3 @@
-locals {
-  project     = "wpdemo"
-  env         = "dev"
-  tags        = {}
-  db_name     = "wordpress"
-  db_username = "wpuser"
-}
-
 resource "random_password" "db_master" {
   length           = 32
   special          = true

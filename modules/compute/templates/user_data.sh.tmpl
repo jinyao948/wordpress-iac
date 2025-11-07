@@ -1,0 +1,89 @@
+#!/bin/bash
+set -xeuo pipefail
+
+REGION="${region}"
+PARAM_PREFIX="${param_prefix}"
+WORDPRESS_IMAGE="${wordpress_image}"
+DATA_DIR="${data_dir}"
+HEALTH_CHECK="${data_dir}/healthz.php"
+
+yum update -y
+yum install -y amazon-linux-extras
+amazon-linux-extras install -y docker
+yum install -y awscli
+
+systemctl enable docker
+systemctl start docker
+
+mkdir -p "${data_dir}"
+
+ssm_get() {
+  local name=$1
+  aws ssm get-parameter \
+    --name "$name" \
+    --with-decryption \
+    --region "$REGION" \
+    --query 'Parameter.Value' \
+    --output text
+}
+
+DB_NAME=$(ssm_get "$PARAM_PREFIX/db/name")
+DB_USER=$(ssm_get "$PARAM_PREFIX/db/username")
+DB_PASS=$(ssm_get "$PARAM_PREFIX/db/password")
+DB_HOST="${db_endpoint}"
+SITE_URL=$(ssm_get "$PARAM_PREFIX/wp/site_url" 2>/dev/null || echo "http://localhost")
+HOME_URL=$(ssm_get "$PARAM_PREFIX/wp/home_url" 2>/dev/null || echo "http://localhost")
+
+AUTH_KEY=$(ssm_get "$PARAM_PREFIX/wp/salt/auth")
+SECURE_AUTH_KEY=$(ssm_get "$PARAM_PREFIX/wp/salt/secure_auth")
+LOGGED_IN_KEY=$(ssm_get "$PARAM_PREFIX/wp/salt/logged_in")
+NONCE_KEY=$(ssm_get "$PARAM_PREFIX/wp/salt/nonce")
+AUTH_SALT=$(ssm_get "$PARAM_PREFIX/wp/auth_salt")
+SECURE_AUTH_SALT=$(ssm_get "$PARAM_PREFIX/wp/secure_auth_salt")
+LOGGED_IN_SALT=$(ssm_get "$PARAM_PREFIX/wp/logged_in_salt")
+NONCE_SALT=$(ssm_get "$PARAM_PREFIX/wp/nonce_salt")
+
+cat > "$HEALTH_CHECK" <<'PHP'
+<?php http_response_code(200); echo 'ok'; ?>
+PHP
+
+cat > /etc/systemd/system/wordpress.service <<EOF
+[Unit]
+Description=WordPress container
+After=docker.service
+Requires=docker.service
+
+[Service]
+Restart=always
+Environment=WP_DB_NAME=$DB_NAME
+Environment=WP_DB_USER=$DB_USER
+Environment=WP_DB_PASSWORD=$DB_PASS
+Environment=WP_DB_HOST=$DB_HOST
+Environment=WP_HOME=$HOME_URL
+Environment=WP_SITEURL=$SITE_URL
+Environment=WP_AUTH_KEY=$AUTH_KEY
+Environment=WP_SECURE_AUTH_KEY=$SECURE_AUTH_KEY
+Environment=WP_LOGGED_IN_KEY=$LOGGED_IN_KEY
+Environment=WP_NONCE_KEY=$NONCE_KEY
+Environment=WP_AUTH_SALT=$AUTH_SALT
+Environment=WP_SECURE_AUTH_SALT=$SECURE_AUTH_SALT
+Environment=WP_LOGGED_IN_SALT=$LOGGED_IN_SALT
+Environment=WP_NONCE_SALT=$NONCE_SALT
+ExecStart=/usr/bin/docker run --rm \\
+  --name wordpress \\
+  -p 80:80 \\
+  -v ${data_dir}:/var/www/html \\
+  -e WORDPRESS_DB_HOST=$DB_HOST \\
+  -e WORDPRESS_DB_NAME=$DB_NAME \\
+  -e WORDPRESS_DB_USER=$DB_USER \\
+  -e WORDPRESS_DB_PASSWORD=$DB_PASS \\
+  -e WORDPRESS_CONFIG_EXTRA="define('WP_HOME', '$HOME_URL'); define('WP_SITEURL', '$SITE_URL');" \\
+  "$WORDPRESS_IMAGE"
+
+[Install]
+WantedBy=multi-user.target
+EOF
+
+systemctl daemon-reload
+systemctl enable wordpress
+systemctl start wordpress

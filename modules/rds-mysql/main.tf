@@ -1,5 +1,6 @@
 locals {
-  identifier = substr(regexreplace(lower("${var.project}-${var.env}-mysql"), "[^a-z0-9-]", "-"), 0, 63)
+  identifier_source = lower("${var.project}-${var.env}-mysql")
+  identifier        = substr(join("", regexall("[a-z0-9-]", local.identifier_source)), 0, 63)
 }
 
 resource "aws_db_subnet_group" "this" {

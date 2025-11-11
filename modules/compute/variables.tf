@@ -37,7 +37,7 @@ variable "iam_instance_profile_name" {
 variable "instance_type" {
   description = "EC2 instance type for WordPress instances"
   type        = string
-  default     = "t2.micro"
+  default     = "t4g.micro"
 }
 
 variable "ssm_param_prefix" {

@@ -47,19 +47,19 @@ variable "create_bootstrap_admin_creds" {
 variable "s3_bucket_name" {
   description = "Placeholder S3 bucket name for media offload (updated later once bucket exists)"
   type        = string
-  default     = ""
+  default     = "wpdemo-media-placeholder"
 }
 
 variable "site_url" {
   description = "Placeholder WordPress site URL (updated once ALB DNS is known)"
   type        = string
-  default     = ""
+  default     = "https://pending.example.com"
 }
 
 variable "home_url" {
   description = "Placeholder WordPress home URL (updated once ALB DNS is known)"
   type        = string
-  default     = ""
+  default     = "https://pending.example.com"
 }
 
 variable "tags" {

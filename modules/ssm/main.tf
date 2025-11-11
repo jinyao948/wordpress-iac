@@ -126,7 +126,7 @@ resource "random_password" "bootstrap_admin_password" {
 
   length           = var.admin_password_length
   special          = true
-  override_special = "!@#$%^&*()-_=+[]{}<>:?/"
+  override_special = "!#$%^&*()-_=+[]{}<>:?"
 }
 
 resource "aws_ssm_parameter" "bootstrap_admin_username" {

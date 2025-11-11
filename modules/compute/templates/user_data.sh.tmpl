@@ -10,7 +10,7 @@ HEALTH_CHECK="${data_dir}/healthz.php"
 yum update -y
 yum install -y amazon-linux-extras
 amazon-linux-extras install -y docker
-yum install -y awscli
+yum install -y awscli jq
 
 systemctl enable docker
 systemctl start docker
@@ -47,6 +47,34 @@ cat > "$HEALTH_CHECK" <<'PHP'
 <?php http_response_code(200); echo 'ok'; ?>
 PHP
 
+ECR_REGISTRY="${account_id}.dkr.ecr.${region}.amazonaws.com"
+aws ecr get-login-password --region "$REGION" | docker login --username AWS --password-stdin "$ECR_REGISTRY"
+
+cat > /usr/local/bin/run-wordpress.sh <<SCRIPT
+#!/bin/bash
+set -euo pipefail
+/usr/bin/docker rm -f wordpress >/dev/null 2>&1 || true
+/usr/bin/docker run --rm \
+  --name wordpress \
+  -p 80:80 \
+  -v ${data_dir}:/var/www/html \
+  -e WORDPRESS_DB_HOST="\$WP_DB_HOST" \
+  -e WORDPRESS_DB_NAME="\$WP_DB_NAME" \
+  -e WORDPRESS_DB_USER="\$WP_DB_USER" \
+  -e WORDPRESS_DB_PASSWORD="\$WP_DB_PASSWORD" \
+  -e WORDPRESS_AUTH_KEY="\$WP_AUTH_KEY" \
+  -e WORDPRESS_SECURE_AUTH_KEY="\$WP_SECURE_AUTH_KEY" \
+  -e WORDPRESS_LOGGED_IN_KEY="\$WP_LOGGED_IN_KEY" \
+  -e WORDPRESS_NONCE_KEY="\$WP_NONCE_KEY" \
+  -e WORDPRESS_AUTH_SALT="\$WP_AUTH_SALT" \
+  -e WORDPRESS_SECURE_AUTH_SALT="\$WP_SECURE_AUTH_SALT" \
+  -e WORDPRESS_LOGGED_IN_SALT="\$WP_LOGGED_IN_SALT" \
+  -e WORDPRESS_NONCE_SALT="\$WP_NONCE_SALT" \
+  -e WORDPRESS_CONFIG_EXTRA="define('WP_HOME', '\$WP_HOME'); define('WP_SITEURL', '\$WP_SITEURL');" \
+  "$WORDPRESS_IMAGE"
+SCRIPT
+chmod +x /usr/local/bin/run-wordpress.sh
+
 cat > /etc/systemd/system/wordpress.service <<EOF
 [Unit]
 Description=WordPress container
@@ -54,6 +82,7 @@ After=docker.service
 Requires=docker.service
 
 [Service]
+Type=simple
 Restart=always
 Environment=WP_DB_NAME=$DB_NAME
 Environment=WP_DB_USER=$DB_USER
@@ -69,16 +98,8 @@ Environment=WP_AUTH_SALT=$AUTH_SALT
 Environment=WP_SECURE_AUTH_SALT=$SECURE_AUTH_SALT
 Environment=WP_LOGGED_IN_SALT=$LOGGED_IN_SALT
 Environment=WP_NONCE_SALT=$NONCE_SALT
-ExecStart=/usr/bin/docker run --rm \\
-  --name wordpress \\
-  -p 80:80 \\
-  -v ${data_dir}:/var/www/html \\
-  -e WORDPRESS_DB_HOST=$DB_HOST \\
-  -e WORDPRESS_DB_NAME=$DB_NAME \\
-  -e WORDPRESS_DB_USER=$DB_USER \\
-  -e WORDPRESS_DB_PASSWORD=$DB_PASS \\
-  -e WORDPRESS_CONFIG_EXTRA="define('WP_HOME', '$HOME_URL'); define('WP_SITEURL', '$SITE_URL');" \\
-  "$WORDPRESS_IMAGE"
+ExecStart=/usr/local/bin/run-wordpress.sh
+ExecStop=/usr/bin/docker stop wordpress
 
 [Install]
 WantedBy=multi-user.target

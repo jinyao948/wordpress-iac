@@ -4,7 +4,7 @@ data "aws_ami" "amazon_linux_2" {
 
   filter {
     name   = "name"
-    values = ["amzn2-ami-hvm-*-x86_64-gp2"]
+    values = ["amzn2-ami-hvm-*-arm64-gp2"]
   }
 
   filter {
@@ -13,6 +13,8 @@ data "aws_ami" "amazon_linux_2" {
   }
 }
 
+data "aws_caller_identity" "current" {}
+
 locals {
   user_data = templatefile("${path.module}/templates/user_data.sh.tmpl", {
     region          = var.region
@@ -20,6 +22,7 @@ locals {
     wordpress_image = var.wordpress_image
     db_endpoint     = var.db_endpoint
     data_dir        = var.data_dir
+    account_id      = data.aws_caller_identity.current.account_id
   })
 }
 

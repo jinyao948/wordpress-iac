@@ -1,18 +1,21 @@
 resource "random_password" "db_master" {
   length           = 32
   special          = true
-  override_special = "!@#$%^&*()-_=+[]{}<>:?/"
+  override_special = "!#$%^&*()-_=+[]{}<>:?"
 }
 
 module "secrets" {
   source = "../../modules/ssm"
 
-  project     = local.project
-  env         = local.env
-  db_name     = local.db_name
-  db_username = local.db_username
-  db_password = random_password.db_master.result
-  tags        = local.tags
+  project        = local.project
+  env            = local.env
+  db_name        = local.db_name
+  db_username    = local.db_username
+  db_password    = random_password.db_master.result
+  s3_bucket_name = local.s3_bucket_placeholder
+  site_url       = local.site_url_placeholder
+  home_url       = local.home_url_placeholder
+  tags           = local.tags
 }
 
 module "rds_mysql" {

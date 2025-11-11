@@ -13,8 +13,8 @@ module "secrets" {
   db_username    = local.db_username
   db_password    = random_password.db_master.result
   s3_bucket_name = local.s3_bucket_placeholder
-  site_url       = local.site_url_placeholder
-  home_url       = local.home_url_placeholder
+  site_url       = "http://${module.alb.alb_dns_name}"
+  home_url       = "http://${module.alb.alb_dns_name}"
   tags           = local.tags
 }
 

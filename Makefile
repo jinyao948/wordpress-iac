@@ -1,4 +1,4 @@
-TF ?= terraform
+TF ?= terraform -chdir=envs/dev
 
 .PHONY: init plan apply destroy
 
